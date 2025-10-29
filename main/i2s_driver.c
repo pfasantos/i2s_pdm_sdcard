@@ -5,9 +5,6 @@
 #include "driver/i2s_pdm.h"
 #include "driver/gpio.h"
 
-
-char in_buffer[BUF_SIZE]; // buffer para entrada de dados
-
 i2s_chan_handle_t rx_handle; // handler para canais i2s
 
 // tags
@@ -43,4 +40,9 @@ void i2s_pdm_init()
     // inicializar o canal i2s no modo pdm
     i2s_channel_init_pdm_rx_mode(rx_handle, &pdm_rx_cfg);
     ESP_LOGI(I2S_TAG, "Canal I2S iniciado.");
+}
+
+void i2s_pdm_stop() {
+    i2s_channel_disable(rx_handle);
+    i2s_del_channel(rx_handle);
 }
