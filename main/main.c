@@ -20,8 +20,8 @@
 
 FILE* audio_file = NULL;
 
-char in_buffer[BUF_SIZE];
 char rx_buffer[BUF_SIZE];
+char tx_buffer[BUF_SIZE];
 
 int block_count = 0;
 
@@ -32,35 +32,37 @@ TaskHandle_t xTaskStoreDataHandle;
 static const char *MAIN_TAG = "MAIN";
 static const char *I2S_TAG = "I2S";
 
-static void vTaskReadData(void * pvParameters)
+static void vTaskReadData(void *pvParameters)
 {
-    size_t bytes_to_read = BUF_SIZE; // quantidades de bytes para ler
-    size_t bytes_read; // quantidade de bytes lidos
+    size_t bytes_to_read = BUF_SIZE;
+    size_t bytes_read;
+
+    //inicia canal i2s
+    i2s_channel_enable(rx_handle);
 
     TickType_t start_time = xTaskGetTickCount();
 
-    // iniciar o canal i2s
-    i2s_channel_enable(rx_handle);
-
-    while ((xTaskGetTickCount() - start_time)< pdMS_TO_TICKS(REC_TIME_MS)) {
-        if (i2s_channel_read(rx_handle, (void*) in_buffer, bytes_to_read, &bytes_read, portMAX_DELAY) == ESP_OK) {
-            xQueueSend(xQueueData, in_buffer, portMAX_DELAY); // enfileirar dados lidos para a tarefa de envio
-        } else {
-            ESP_LOGE(I2S_TAG, "Erro durante a leitura: errno %d", errno);
-            break;
+    while ((xTaskGetTickCount() - start_time) < pdMS_TO_TICKS(REC_TIME_MS))
+    {
+        if (i2s_channel_read(rx_handle, (void *)rx_buffer, bytes_to_read, &bytes_read, portMAX_DELAY) == ESP_OK)
+        {
+            xQueueSend(xQueueData, &rx_buffer, portMAX_DELAY); //aguarda buffer encher e manda pra fila
         }
         vTaskDelay(1);
     }
+
+    i2s_channel_disable(rx_handle);
     ESP_LOGI(I2S_TAG, "Aquisição encerrada");
     vTaskDelete(NULL);
 }
 
-static void vTaskStoreData(void * pvParameters)
+static void vTaskStoreData(void *pvParameters)
 {
-    while (1) {
-        if (xQueueReceive(xQueueData, rx_buffer, portMAX_DELAY) == pdTRUE) {
+    while (1)
+    {
+        if (xQueueReceive(xQueueData, &tx_buffer, portMAX_DELAY) == pdTRUE) {
             if (audio_file) {
-                fwrite(rx_buffer, 1, BUF_SIZE, audio_file);
+                fwrite(tx_buffer, 1, BUF_SIZE, audio_file);
                 block_count++;
 
                 if (block_count >= FSYNC_DELAY_BLOCKS) {
@@ -71,6 +73,7 @@ static void vTaskStoreData(void * pvParameters)
             }
         }
     }
+
     vTaskDelete(NULL);
 }
 
@@ -78,7 +81,7 @@ void app_main(void)
 {
     i2s_pdm_init();
     sdcard_init();
-    audio_file = fopen(MOUNT_POINT "/audio2.raw", "wb");
+    audio_file = fopen(MOUNT_POINT "/audio.raw", "wb");
 
     xQueueData = xQueueCreate(DMA_BUF_NUM, BUF_SIZE*sizeof(char));
     if(xQueueData == NULL){ // testar se a criacao da fila falhou
