@@ -29,8 +29,8 @@ void i2s_pdm_init()
         .clk_cfg = I2S_PDM_RX_CLK_DEFAULT_CONFIG(44100), // 44100 amostras por segundo
         .slot_cfg = I2S_PDM_RX_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO), // 16bits por amostras e audio mono
         .gpio_cfg = {
-            .clk = GPIO_NUM_18, // clock
-            .din = GPIO_NUM_19, // data in
+            .clk = GPIO_NUM_21, // clock
+            .din = GPIO_NUM_4, // data in
             .invert_flags = { // nao inverter bits
                 .clk_inv = false,
             },
